@@ -11,7 +11,7 @@ using SustainEats.Shared;
 namespace SustainEats.Shared.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251125163823_InitialCreate")]
+    [Migration("20251125165825_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

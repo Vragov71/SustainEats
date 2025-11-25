@@ -11,8 +11,16 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddControllers();
 
+// 1. Регистрираме DbPathService
+builder.Services.AddSingleton<DbPathService>();
+
+// 2. Взимаме пътя
+var dbPath = new DbPathService().GetDbPath();
+var connectionString = $"Data Source={dbPath}";
+
+// 3. Регистрираме DbContext-а
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=app.db"));
+    options.UseSqlite(connectionString));
 
 // Services are now in Shared project
 builder.Services.AddScoped<IAuthService, AuthService>();
