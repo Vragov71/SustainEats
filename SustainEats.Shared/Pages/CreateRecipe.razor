@@ -1,0 +1,155 @@
+@page "/create-recipe"
+@using SustainEats.Shared.Models
+@using SustainEats.Shared.Services
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext DbContext
+@inject NavigationManager NavManager
+@inject IMacroCalculatorService MacroService
+
+<div class="container" style="max-width: 800px;">
+    <div class="card mb-4">
+        <div class="card-header py-3">
+            <h4 class="m-0">Създаване на нова рецепта</h4>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@_recipe" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Заглавие на рецептата</label>
+                        <InputText @bind-Value="_recipe.Title" class="form-control" placeholder="напр. Пиле с ориз" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Време (мин)</label>
+                        <InputNumber @bind-Value="_recipe.PreparationTime" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Инструкции за приготвяне</label>
+                    <InputTextArea @bind-Value="_recipe.Instructions" class="form-control" rows="4" />
+                </div>
+
+                <hr />
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>Съставки</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddIngredientRow">
+                        <i class="bi bi-plus-circle"></i> Добави ред
+                    </button>
+                </div>
+
+                <div class="table-responsive mb-4">
+                    <table class="table table-borderless align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50%">Продукт</th>
+                                <th style="width: 30%">Количество (g/ml)</th>
+                                <th style="width: 20%">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ingredientRow in _tempIngredients)
+                            {
+                                <tr>
+                                    <td>
+                                        <select class="form-select" @bind="ingredientRow.SelectedIngredientId">
+                                            <option value="0">Избери продукт...</option>
+                                            @foreach (var def in _availableIngredients)
+                                            {
+                                                <option value="@def.Id">@def.Name (@def.BaseUnit)</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" @bind="ingredientRow.Quantity" placeholder="0" />
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                @onclick="() => RemoveIngredientRow(ingredientRow)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="/recipes" class="btn btn-secondary">Отказ</a>
+                    <button type="submit" class="btn btn-primary btn-lg px-5">Запиши Рецептата</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Recipe _recipe = new();
+    private List<IngredientDefinition> _availableIngredients = new();
+    
+    // Помощен клас за UI редактора
+    private class IngredientRow
+    {
+        public int SelectedIngredientId { get; set; }
+        public decimal Quantity { get; set; }
+    }
+
+    private List<IngredientRow> _tempIngredients = new() { new IngredientRow() };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Зареждаме номенклатурата на продуктите за падащото меню
+        _availableIngredients = await DbContext.IngredientDefinitions.ToListAsync();
+        
+        // Ако няма продукти в базата, добавяме примерни за тест
+        if (!_availableIngredients.Any())
+        {
+            _availableIngredients.Add(new IngredientDefinition { Id=1, Name="Ориз", BaseUnit=MeasureUnit.g, Carbs=28, Protein=2.7m, Fat=0.3m });
+            _availableIngredients.Add(new IngredientDefinition { Id=2, Name="Пилешко", BaseUnit=MeasureUnit.g, Carbs=0, Protein=31, Fat=3.6m });
+             _availableIngredients.Add(new IngredientDefinition { Id=3, Name="Зехтин", BaseUnit=MeasureUnit.ml, Carbs=0, Protein=0, Fat=100 });
+        }
+    }
+
+    private void AddIngredientRow()
+    {
+        _tempIngredients.Add(new IngredientRow());
+    }
+
+    private void RemoveIngredientRow(IngredientRow row)
+    {
+        _tempIngredients.Remove(row);
+    }
+
+    private async Task HandleSubmit()
+    {
+        // 1. Прехвърляме от UI модела към DB модела
+        _recipe.Ingredients = new List<RecipeIngredient>();
+        
+        foreach (var row in _tempIngredients)
+        {
+            if (row.SelectedIngredientId > 0 && row.Quantity > 0)
+            {
+                var definition = _availableIngredients.First(i => i.Id == row.SelectedIngredientId);
+                _recipe.Ingredients.Add(new RecipeIngredient
+                {
+                    IngredientDefinitionId = row.SelectedIngredientId,
+                    IngredientDefinition = definition, // Нужно за калкулатора
+                    QuantityNeeded = row.Quantity
+                });
+            }
+        }
+
+        // 2. Изчисляваме макросите автоматично
+        MacroService.CalculateAndSetMacros(_recipe);
+
+        // 3. Записваме в базата
+        DbContext.Recipes.Add(_recipe);
+        await DbContext.SaveChangesAsync();
+
+        NavManager.NavigateTo("/recipes");
+    }
+}
