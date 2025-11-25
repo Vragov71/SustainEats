@@ -1,0 +1,117 @@
+@page "/inventory"
+@using SustainEats.Shared.Models
+@using SustainEats.Shared.Services
+@using SustainEats.Shared.Helpers
+@inject IInventoryService InventoryService
+@inject IAuthService AuthService
+
+<h3>My Pantry</h3>
+
+<EditForm Model="@_newItem" OnValidSubmit="HandleAddItem">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row">
+        <div class="col">
+            <InputText @bind-Value="_newItem.IngredientName" class="form-control" placeholder="Ingredient" />
+        </div>
+        <div class="col">
+            <InputNumber @bind-Value="_newItem.Quantity" class="form-control" placeholder="Quantity" />
+        </div>
+        <div class="col">
+            <InputSelect @bind-Value="_newItem.Unit" class="form-select">
+                @foreach (var unit in Enum.GetValues(typeof(MeasureUnit)))
+                {
+                    <option value="@unit">@unit</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="col">
+            <InputDate @bind-Value="_newItem.ExpiryDate" class="form-control" />
+        </div>
+        <div class="col">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </div>
+</EditForm>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Ingredient</th>
+            <th>Quantity</th>
+            <th>Expiry Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in _pantryItems)
+        {
+            <tr class="@GetExpiryClass(item)">
+                <td>@item.IngredientDefinition.Name</td>
+                <td>@item.Quantity @item.IngredientDefinition.BaseUnit</td>
+                <td>@item.ExpiryDate?.ToString("yyyy-MM-dd")</td>
+                <td>
+                    <button class="btn btn-danger" @onclick="() => HandleRemoveItem(item.Id)">Remove</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<PantryItem> _pantryItems = new();
+    private NewPantryItemModel _newItem = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // In a real app, you'd get the user ID from the auth service
+        var user = new User { Id = 1, Username = "TestUser" }; // Placeholder
+        _pantryItems = await InventoryService.GetPantryItemsAsync(user.Id);
+    }
+
+    private async Task HandleAddItem()
+    {
+        // In a real app, you'd get the user ID and find the ingredient definition
+        var user = new User { Id = 1, Username = "TestUser" }; // Placeholder
+        var ingredient = new IngredientDefinition { Id = 1, Name = _newItem.IngredientName, BaseUnit = _newItem.Unit }; // Placeholder
+
+        var (baseQuantity, baseUnit) = UnitConverter.ToBaseUnit(_newItem.Quantity, _newItem.Unit);
+
+        var pantryItem = new PantryItem
+        {
+            UserId = user.Id,
+            IngredientDefinitionId = ingredient.Id,
+            Quantity = baseQuantity,
+            ExpiryDate = _newItem.ExpiryDate
+        };
+
+        await InventoryService.AddPantryItemAsync(pantryItem);
+        _pantryItems = await InventoryService.GetPantryItemsAsync(user.Id);
+        _newItem = new();
+    }
+
+    private async Task HandleRemoveItem(int itemId)
+    {
+        await InventoryService.RemovePantryItemAsync(itemId);
+        var user = new User { Id = 1, Username = "TestUser" }; // Placeholder
+        _pantryItems = await InventoryService.GetPantryItemsAsync(user.Id);
+    }
+
+    private string GetExpiryClass(PantryItem item)
+    {
+        if (item.ExpiryDate.HasValue && item.ExpiryDate.Value < DateTime.Now.AddDays(3))
+        {
+            return "table-warning";
+        }
+        return "";
+    }
+
+    private class NewPantryItemModel
+    {
+        public string IngredientName { get; set; }
+        public decimal Quantity { get; set; }
+        public MeasureUnit Unit { get; set; }
+        public DateTime? ExpiryDate { get; set; }
+    }
+}

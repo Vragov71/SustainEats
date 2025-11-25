@@ -1,0 +1,39 @@
+@page "/register"
+@using SustainEats.Shared.Models
+@using SustainEats.Shared.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<h3>Register</h3>
+
+<EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label>Username</label>
+        <InputText @bind-Value="registerModel.Username" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Email</label>
+        <InputText @bind-Value="registerModel.Email" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Password</label>
+        <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">Register</button>
+</EditForm>
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+
+    private async Task HandleRegister()
+    {
+        var result = await AuthService.Register(registerModel);
+        if (result)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+}

@@ -1,0 +1,22 @@
+@using SustainEats.Shared.Models
+
+<div class="card recipe-card">
+    <img src="https://via.placeholder.com/150" class="card-img-top" alt="@Recipe.Title">
+    <div class="card-body">
+        <h5 class="card-title">@Recipe.Title</h5>
+        <p class="card-text">
+            <strong>Calories:</strong> @Recipe.TotalCalories.ToString("F0") kcal
+        </p>
+        <p class="card-text">
+            <strong>Protein:</strong> @Recipe.TotalProtein.ToString("F1")g |
+            <strong>Carbs:</strong> @Recipe.TotalCarbs.ToString("F1")g |
+            <strong>Fat:</strong> @Recipe.TotalFat.ToString("F1")g
+        </p>
+        <a href="/recipe/@Recipe.Id" class="btn btn-primary">View Recipe</a>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Recipe Recipe { get; set; }
+}

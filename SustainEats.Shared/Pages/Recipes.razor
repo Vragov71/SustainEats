@@ -1,0 +1,53 @@
+@page "/recipes"
+@page "/recipes/category/{CategoryId:int}"
+
+@using Microsoft.EntityFrameworkCore
+@using SustainEats.Shared.Components
+@using SustainEats.Shared.Models
+@inject AppDbContext DbContext
+
+<h3>Recipes</h3>
+
+<div class="row">
+    <div class="col-md-3">
+        <CategoryFilter />
+    </div>
+    <div class="col-md-9">
+        <div class="row">
+            @foreach (var recipe in _recipes)
+            {
+                <div class="col-md-4 mb-3">
+                    <RecipeCard Recipe="recipe" />
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? CategoryId { get; set; }
+
+    private List<Recipe> _recipes = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var query = DbContext.Recipes.AsQueryable();
+
+        if (CategoryId.HasValue)
+        {
+            // This is a simplified filter. A real implementation would need
+            // to recursively find all recipe IDs under a given category.
+            // For now, we'll just show all recipes.
+        }
+
+        _recipes = await query.ToListAsync();
+
+        // Placeholder data
+        if (!_recipes.Any())
+        {
+            _recipes.Add(new Recipe { Id = 1, Title = "Chicken Curry", TotalCalories = 525, TotalProtein = 45, TotalCarbs = 30, TotalFat = 25 });
+            _recipes.Add(new Recipe { Id = 2, Title = "Spaghetti Bolognese", TotalCalories = 672, TotalProtein = 35, TotalCarbs = 70, TotalFat = 28 });
+        }
+    }
+}

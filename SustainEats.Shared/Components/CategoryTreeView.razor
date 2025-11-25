@@ -1,0 +1,21 @@
+@using SustainEats.Shared.Models
+
+<div class="category-node">
+    <a href="/recipes/category/@Category.Id">@Category.Name</a>
+    @if (Category.Children != null && Category.Children.Any())
+    {
+        <ul>
+            @foreach (var child in Category.Children)
+            {
+                <li>
+                    <CategoryTreeView Category="child" />
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Category Category { get; set; }
+}

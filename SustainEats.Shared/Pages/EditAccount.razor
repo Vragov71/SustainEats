@@ -1,0 +1,41 @@
+@page "/edit-account"
+@using SustainEats.Shared.Models
+@using SustainEats.Shared.Services
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<h3>Edit Account</h3>
+
+<EditForm Model="@_editAccountModel" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label>Username</label>
+        <InputText @bind-Value="_editAccountModel.Username" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Email</label>
+        <InputText @bind-Value="_editAccountModel.Email" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    private EditAccountModel _editAccountModel = new EditAccountModel();
+
+    protected override void OnInitialized()
+    {
+        // In a real app, you'd fetch this from the AuthService or an API
+        _editAccountModel.Username = AuthService.GetUsername();
+        _editAccountModel.Email = "test@example.com";
+    }
+
+    private async Task HandleSubmit()
+    {
+        // In a real app, you'd call an API to update the user's information
+        Console.WriteLine("Updating account information...");
+        await Task.Delay(100);
+        NavigationManager.NavigateTo("/account");
+    }
+}

@@ -1,0 +1,9 @@
+﻿namespace SustainEats;
+
+public partial class MainPage : ContentPage
+{
+    public MainPage()
+    {
+        InitializeComponent();
+    }
+}

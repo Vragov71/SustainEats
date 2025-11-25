@@ -1,0 +1,71 @@
+@page "/recipe/{RecipeId:int}"
+
+@using Microsoft.EntityFrameworkCore
+@using SustainEats.Shared.Models
+@inject AppDbContext DbContext
+
+@if (_recipe == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h3>@_recipe.Title</h3>
+
+    <div class="row">
+        <div class="col-md-8">
+            <h5>Instructions</h5>
+            <p>@_recipe.Instructions</p>
+
+            <h5>Ingredients</h5>
+            <ul>
+                @foreach (var ingredient in _recipe.Ingredients)
+                {
+                    <li>@ingredient.QuantityNeeded @ingredient.IngredientDefinition.BaseUnit - @ingredient.IngredientDefinition.Name</li>
+                }
+            </ul>
+        </div>
+        <div class="col-md-4">
+            <h5>Macros</h5>
+            <p><strong>Calories:</strong> @_recipe.TotalCalories.ToString("F0") kcal</p>
+            <p><strong>Protein:</strong> @_recipe.TotalProtein.ToString("F1") g</p>
+            <p><strong>Carbs:</strong> @_recipe.TotalCarbs.ToString("F1") g</p>
+            <p><strong>Fat:</strong> @_recipe.TotalFat.ToString("F1") g</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int RecipeId { get; set; }
+
+    private Recipe _recipe;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _recipe = await DbContext.Recipes
+            .Include(r => r.Ingredients)
+            .ThenInclude(ri => ri.IngredientDefinition)
+            .FirstOrDefaultAsync(r => r.Id == RecipeId);
+
+        // Placeholder data if recipe not found
+        if (_recipe == null)
+        {
+            var placeholderIngredient = new IngredientDefinition { Name = "Chicken Breast", BaseUnit = MeasureUnit.g };
+            _recipe = new Recipe
+            {
+                Id = RecipeId,
+                Title = "Placeholder Recipe",
+                Instructions = "1. Cook the chicken. 2. Add sauce. 3. Serve.",
+                TotalCalories = 550,
+                TotalProtein = 45,
+                TotalCarbs = 30,
+                TotalFat = 20,
+                Ingredients = new List<RecipeIngredient>
+                {
+                    new RecipeIngredient { IngredientDefinition = placeholderIngredient, QuantityNeeded = 200 }
+                }
+            };
+        }
+    }
+}

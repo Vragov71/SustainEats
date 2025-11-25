@@ -1,0 +1,28 @@
+@using Microsoft.EntityFrameworkCore
+@using SustainEats.Shared.Models
+@inject AppDbContext DbContext
+
+<div class="category-filter">
+    <h5>Categories</h5>
+    <ul>
+        @foreach (var category in _rootCategories)
+        {
+            <li>
+                <CategoryTreeView Category="category" />
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    private List<Category> _rootCategories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rootCategories = await DbContext.Categories
+            .Where(c => c.ParentId == null)
+            .Include(c => c.Children)
+            .ThenInclude(c => c.Children) // Adjust depth as needed
+            .ToListAsync();
+    }
+}

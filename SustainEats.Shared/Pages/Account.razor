@@ -1,0 +1,26 @@
+@page "/account"
+@using SustainEats.Shared.Models
+@using SustainEats.Shared.Services
+@inject IAuthService AuthService
+
+<h3>Account Information</h3>
+
+@if (_user != null)
+{
+    <div>
+        <strong>Username:</strong> @_user.Username
+    </div>
+    <div>
+        <strong>Email:</strong> @_user.Email
+    </div>
+}
+
+@code {
+    private User _user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // In a real app, you'd fetch this from the AuthService or an API
+        _user = new User { Username = AuthService.GetUsername(), Email = "test@example.com" };
+    }
+}
