@@ -6,34 +6,44 @@
 
 <h3>Register</h3>
 
-<EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+<EditForm Model="@_registerModel" OnValidSubmit="HandleRegister">
     <DataAnnotationsValidator />
-    <ValidationSummary />
 
-    <div class="form-group">
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <div class="form-group mb-3">
         <label>Username</label>
-        <InputText @bind-Value="registerModel.Username" class="form-control" />
+        <InputText @bind-Value="_registerModel.Username" class="form-control" />
     </div>
-    <div class="form-group">
+    <div class="form-group mb-3">
         <label>Email</label>
-        <InputText @bind-Value="registerModel.Email" class="form-control" />
+        <InputText @bind-Value="_registerModel.Email" class="form-control" />
     </div>
-    <div class="form-group">
+    <div class="form-group mb-3">
         <label>Password</label>
-        <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+        <InputText @bind-Value="_registerModel.Password" type="password" class="form-control" />
     </div>
     <button type="submit" class="btn btn-primary">Register</button>
 </EditForm>
 
 @code {
-    private RegisterModel registerModel = new RegisterModel();
+    private RegisterModel _registerModel = new();
+    private string _errorMessage;
 
     private async Task HandleRegister()
     {
-        var result = await AuthService.Register(registerModel);
+        _errorMessage = null;
+        var result = await AuthService.Register(_registerModel);
         if (result)
         {
             NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            _errorMessage = "Registration failed. The email might already be in use.";
         }
     }
 }

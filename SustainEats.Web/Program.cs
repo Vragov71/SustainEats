@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using SustainEats.Shared;
 using SustainEats.Shared.Models;
 using SustainEats.Web.Components;
-using SustainEats.Shared.Services; // Changed from .Web.Services
+using SustainEats.Shared.Services;
+using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,39 +13,35 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddControllers();
 
-// 1. Регистрираме DbPathService
-builder.Services.AddSingleton<DbPathService>();
+// --- AUTH SERVICES ---
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
+builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
+// ---------------------
 
-// 2. Взимаме пътя
-var dbPath = new DbPathService().GetDbPath();
-var connectionString = $"Data Source={dbPath}";
-
-// 3. Регистрираме DbContext-а
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseSqlite("Data Source=app.db"));
 
 // Services are now in Shared project
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IMacroCalculatorService, MacroCalculatorService>();
-builder.Services.AddScoped<HttpClient>();
+builder.Services.AddScoped<HttpClient>(); 
 
 
 // Add device-specific services used by the SustainEats.Shared project
-builder.Services.AddSingleton<IFormFactor, WebFormFactor>(); // Using a specific implementation for Web
+builder.Services.AddSingleton<IFormFactor, WebFormFactor>(); 
 
 var app = builder.Build();
 
-// Ensure the database is created and seeded
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // Use migrations to update the database schema
     dbContext.Database.Migrate();
 
     if (!dbContext.Categories.Any())
     {
-        // Seeding logic remains the same
         var appetizers = new Category { Name = "Предястия" };
         var salads = new Category { Name = "Салати" };
         var soups = new Category { Name = "Супи" };
@@ -64,7 +62,6 @@ using (var scope = app.Services.CreateScope())
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -81,7 +78,6 @@ app.MapControllers();
 
 app.Run();
 
-// Specific implementation of IFormFactor for the Web project
 public class WebFormFactor : IFormFactor
 {
     public string GetFormFactor() => "Web";

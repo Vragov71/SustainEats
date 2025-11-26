@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using SustainEats.Shared;
 using SustainEats.Shared.Models;
 using SustainEats.Shared.Services;
+using System.Net.Http;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace SustainEats;
 
@@ -14,6 +16,13 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
+
+        // --- AUTH SERVICES ---
+        builder.Services.AddScoped<CustomAuthStateProvider>();
+        builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
+        builder.Services.AddAuthorizationCore();
+        builder.Services.AddCascadingAuthenticationState();
+        // ---------------------
 
         // 1. Database Path
         builder.Services.AddSingleton<DbPathService>();
@@ -29,7 +38,7 @@ public static class MauiProgram
         builder.Services.AddScoped<IMacroCalculatorService, MacroCalculatorService>();
         
         // 4. HttpClient for AuthService
-        builder.Services.AddScoped<HttpClient>();
+        builder.Services.AddScoped<HttpClient>(); 
 
         // Add device-specific services used by the SustainEats.Shared project
         builder.Services.AddSingleton<IFormFactor, FormFactor>();
