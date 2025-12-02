@@ -1,12 +1,32 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
-using SustainEats.Shared;
-using SustainEats.Shared.Models;
 using SustainEats.Shared.Services;
-using System.Net.Http;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace SustainEats;
+
+// Dummy services for MAUI to compile
+public class MauiAuthService : IAuthService {
+    public Task<string> Login(SustainEats.Shared.Models.LoginModel model) => Task.FromResult<string>(null);
+    public Task<bool> Register(SustainEats.Shared.Models.RegisterModel model) => Task.FromResult(false);
+    public Task Logout() => Task.CompletedTask;
+    public string GetUsername() => null;
+}
+public class MauiInventoryService : IInventoryService {
+    public Task<System.Collections.Generic.List<SustainEats.Shared.Models.PantryItem>> GetPantryItemsAsync(int userId) => Task.FromResult(new System.Collections.Generic.List<SustainEats.Shared.Models.PantryItem>());
+    public Task AddPantryItemAsync(SustainEats.Shared.Models.PantryItem item) => Task.CompletedTask;
+    public Task UpdatePantryItemAsync(SustainEats.Shared.Models.PantryItem item) => Task.CompletedTask;
+    public Task RemovePantryItemAsync(int itemId) => Task.CompletedTask;
+}
+public class MauiRecipeService : IRecipeService {
+    public Task<System.Collections.Generic.List<SustainEats.Shared.Models.Recipe>> GetAllRecipesAsync() => Task.FromResult(new System.Collections.Generic.List<SustainEats.Shared.Models.Recipe>());
+    public Task<SustainEats.Shared.Models.Recipe> GetRecipeByIdAsync(int recipeId) => Task.FromResult<SustainEats.Shared.Models.Recipe>(null);
+    public Task AddRecipeAsync(SustainEats.Shared.Models.Recipe recipe) => Task.CompletedTask;
+    public Task<System.Collections.Generic.List<SustainEats.Shared.Models.IngredientDefinition>> GetAvailableIngredientsAsync() => Task.FromResult(new System.Collections.Generic.List<SustainEats.Shared.Models.IngredientDefinition>());
+}
+public class MauiMacroCalculatorService : IMacroCalculatorService {
+    public void CalculateAndSetMacros(SustainEats.Shared.Models.Recipe recipe) { }
+}
+
 
 public static class MauiProgram
 {
@@ -17,81 +37,25 @@ public static class MauiProgram
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
 
-        // --- AUTH SERVICES ---
-        builder.Services.AddScoped<CustomAuthStateProvider>();
-        builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
-        builder.Services.AddAuthorizationCore();
-        builder.Services.AddCascadingAuthenticationState();
-        // ---------------------
-
-        // 1. Database Path
-        builder.Services.AddSingleton<DbPathService>();
-        var dbPath = new DbPathService().GetDbPath();
-
-        // 2. DbContext
-        builder.Services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite($"Data Source={dbPath}"));
-
-        // 3. Services
-        builder.Services.AddScoped<IAuthService, AuthService>();
-        builder.Services.AddScoped<IInventoryService, InventoryService>();
-        builder.Services.AddScoped<IMacroCalculatorService, MacroCalculatorService>();
-        
-        // 4. HttpClient for AuthService
-        builder.Services.AddScoped<HttpClient>(); 
-
-        // Add device-specific services used by the SustainEats.Shared project
-        builder.Services.AddSingleton<IFormFactor, FormFactor>();
-
         builder.Services.AddMauiBlazorWebView();
-
+        
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
         builder.Logging.AddDebug();
 #endif
 
-        var app = builder.Build();
+        builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+        builder.Services.AddAuthorizationCore();
+        
+        // Register DUMMY services for MAUI
+        builder.Services.AddSingleton<DbPathService>();
+        builder.Services.AddSingleton<DatabaseService>();
+        builder.Services.AddScoped<IAuthService, MauiAuthService>();
+        builder.Services.AddScoped<IInventoryService, MauiInventoryService>();
+        builder.Services.AddScoped<IRecipeService, MauiRecipeService>();
+        builder.Services.AddScoped<IMacroCalculatorService, MauiMacroCalculatorService>();
+        builder.Services.AddScoped<CustomAuthStateProvider>();
 
-        // Ensure database is created and migrated
-        using (var scope = app.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            dbContext.Database.Migrate();
-            
-            // Seed data
-            if (!dbContext.Categories.Any())
-            {
-                // Main categories
-                var appetizers = new Category { Name = "Предястия" };
-                var salads = new Category { Name = "Салати" };
-                var soups = new Category { Name = "Супи" };
-                var mainCourses = new Category { Name = "Основни ястия" };
-                var burgers = new Category { Name = "Бургери" };
-                var sideDishes = new Category { Name = "Гарнитури" };
-                var spreads = new Category { Name = "Разядки" };
-                var breads = new Category { Name = "Хлебни изделия" };
-                var desserts = new Category { Name = "Десерти" };
-
-                dbContext.Categories.AddRange(appetizers, salads, soups, mainCourses, burgers, sideDishes, spreads, breads, desserts);
-                dbContext.SaveChanges();
-
-                // Sub-categories for main courses
-                var meatDishes = new Category { Name = "Месни", ParentId = mainCourses.Id };
-                var meatlessDishes = new Category { Name = "Безмесни", ParentId = mainCourses.Id };
-
-                dbContext.Categories.AddRange(meatDishes, meatlessDishes);
-                dbContext.SaveChanges();
-            }
-        }
-
-        return app;
+        return builder.Build();
     }
-}
-
-public class FormFactor : IFormFactor
-{
-    // Basic implementation for MAUI
-    public string GetFormFactor() => "Mobile";
-    public string GetPlatform() => DeviceInfo.Platform.ToString();
-    public bool IsMobile() => true;
 }

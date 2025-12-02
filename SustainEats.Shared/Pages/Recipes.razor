@@ -1,10 +1,10 @@
 @page "/recipes"
 @page "/recipes/category/{CategoryId:int}"
 
-@using Microsoft.EntityFrameworkCore
 @using SustainEats.Shared.Components
 @using SustainEats.Shared.Models
-@inject AppDbContext DbContext
+@using SustainEats.Shared.Services
+@inject IRecipeService RecipeService
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3><i class="bi bi-book-half text-success"></i> Кулинарна книга</h3>
@@ -17,7 +17,7 @@
     <div class="col-lg-3 mb-4">
         <div class="card p-3">
             <h6 class="text-uppercase text-muted mb-3" style="font-size: 0.8rem; letter-spacing: 1px;">Категории</h6>
-            <CategoryFilter />
+            @* <CategoryFilter /> *@ @* Temporarily disabled *@
         </div>
     </div>
 
@@ -50,20 +50,8 @@
 
     private List<Recipe> _recipes = new();
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        var query = DbContext.Recipes.AsQueryable();
-
-        if (CategoryId.HasValue)
-        {
-            // This is a simplified filter. A real implementation would need
-            // to recursively find all recipe IDs under a given category.
-            // For now, we'll just show all recipes.
-        }
-
-        _recipes = await query
-            .Include(r => r.Ingredients)
-            .ThenInclude(ri => ri.IngredientDefinition)
-            .ToListAsync();
+        _recipes = await RecipeService.GetAllRecipesAsync();
     }
 }

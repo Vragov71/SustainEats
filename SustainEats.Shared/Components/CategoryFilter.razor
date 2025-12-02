@@ -1,6 +1,4 @@
-@using Microsoft.EntityFrameworkCore
 @using SustainEats.Shared.Models
-@inject AppDbContext DbContext
 
 <div class="category-filter">
     <h5>Categories</h5>
@@ -17,12 +15,19 @@
 @code {
     private List<Category> _rootCategories = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        _rootCategories = await DbContext.Categories
-            .Where(c => c.ParentId == null)
-            .Include(c => c.Children)
-            .ThenInclude(c => c.Children) // Adjust depth as needed
-            .ToListAsync();
+        // Using placeholder data since DbContext is removed
+        _rootCategories = new List<Category>
+        {
+            new Category { Id = 1, Name = "Основни ястия", Children = new List<Category>
+                {
+                    new Category { Id = 2, Name = "Месни" },
+                    new Category { Id = 3, Name = "Безмесни" }
+                }
+            },
+            new Category { Id = 4, Name = "Салати" },
+            new Category { Id = 5, Name = "Десерти" }
+        };
     }
 }

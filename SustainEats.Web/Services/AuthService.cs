@@ -1,26 +1,35 @@
-using Microsoft.AspNetCore.Components;
 using SustainEats.Shared.Models;
 using SustainEats.Shared.Services;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+using System;
 
 namespace SustainEats.Web.Services
 {
     public class AuthService : IAuthService
     {
-        public event Action OnAuthStateChanged;
-
         private readonly HttpClient _httpClient;
-        private readonly NavigationManager _navigationManager;
-        private string _username;
+        private readonly CustomAuthStateProvider _authStateProvider;
 
-        public AuthService(HttpClient httpClient, NavigationManager navigationManager)
+        private string _baseUrl = "http://localhost:5097";
+        private IAuthService _authServiceImplementation;
+
+        public AuthService(HttpClient httpClient, CustomAuthStateProvider authStateProvider)
         {
             _httpClient = httpClient;
-            _navigationManager = navigationManager;
+            _authStateProvider = authStateProvider;
         }
 
         private string GetApiUrl(string path)
         {
-            return $"{_navigationManager.BaseUri}{path}";
+            return $"{_baseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
+        }
+
+        public event Action? OnAuthStateChanged
+        {
+            add => _authServiceImplementation.OnAuthStateChanged += value;
+            remove => _authServiceImplementation.OnAuthStateChanged -= value;
         }
 
         public async Task<bool> Register(RegisterModel model)
@@ -35,9 +44,8 @@ namespace SustainEats.Web.Services
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResult>();
-                _username = result.Username;
-                OnAuthStateChanged?.Invoke();
-                return _username;
+                _authStateProvider.MarkUserAsAuthenticated(result.Username);
+                return result.Username;
             }
             return null;
         }
@@ -45,13 +53,14 @@ namespace SustainEats.Web.Services
         public async Task Logout()
         {
             await _httpClient.PostAsync(GetApiUrl("api/auth/logout"), null);
-            _username = null;
-            OnAuthStateChanged?.Invoke();
+            _authStateProvider.MarkUserAsLoggedOut();
         }
 
-
-
-        public string GetUsername() => _username;
+        public string GetUsername()
+        {
+            var authState = _authStateProvider.GetAuthenticationStateAsync().Result;
+            return authState.User.Identity?.Name;
+        }
     }
 
     public class LoginResult

@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SustainEats.Shared;
+using Microsoft.Data.Sqlite;
 using SustainEats.Shared.Models;
+using SustainEats.Shared.Services;
+using System.Threading.Tasks;
 
 namespace SustainEats.Web.Controllers
 {
@@ -9,30 +10,38 @@ namespace SustainEats.Web.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly DatabaseService _dbService;
 
-        public AuthController(AppDbContext context)
+        public AuthController(DatabaseService dbService)
         {
-            _context = context;
+            _dbService = dbService;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterModel model)
         {
-            if (await _context.Users.AnyAsync(u => u.Email == model.Email))
+            using var connection = _dbService.GetConnection();
+            await connection.OpenAsync();
+
+            // Check if user exists
+            var checkCmd = connection.CreateCommand();
+            checkCmd.CommandText = "SELECT COUNT(1) FROM Users WHERE Email = $email";
+            checkCmd.Parameters.AddWithValue("$email", model.Email);
+            var userExists = (long)await checkCmd.ExecuteScalarAsync() > 0;
+
+            if (userExists)
             {
                 return BadRequest("User with this email already exists.");
             }
 
-            var user = new User
-            {
-                Username = model.Username,
-                Email = model.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            // Insert new user
+            var insertCmd = connection.CreateCommand();
+            insertCmd.CommandText = "INSERT INTO Users (Username, Email, PasswordHash) VALUES ($username, $email, $passwordHash)";
+            insertCmd.Parameters.AddWithValue("$username", model.Username);
+            insertCmd.Parameters.AddWithValue("$email", model.Email);
+            insertCmd.Parameters.AddWithValue("$passwordHash", BCrypt.Net.BCrypt.HashPassword(model.Password));
+            
+            await insertCmd.ExecuteNonQueryAsync();
 
             return Ok();
         }
@@ -40,22 +49,26 @@ namespace SustainEats.Web.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginModel model)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            using var connection = _dbService.GetConnection();
+            await connection.OpenAsync();
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT PasswordHash, Username FROM Users WHERE Email = $email";
+            command.Parameters.AddWithValue("$email", model.Email);
+
+            using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
             {
-                return Unauthorized();
+                var storedHash = reader.GetString(0);
+                var username = reader.GetString(1);
+
+                if (BCrypt.Net.BCrypt.Verify(model.Password, storedHash))
+                {
+                    return Ok(new { Username = username });
+                }
             }
 
-            return Ok(new { Username = user.Username });
-        }
-
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            // In a real app with token-based auth, you'd invalidate the token here
-            await Task.Delay(100);
-            return Ok();
+            return Unauthorized();
         }
     }
 }

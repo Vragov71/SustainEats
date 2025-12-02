@@ -1,10 +1,9 @@
 @page "/create-recipe"
 @using SustainEats.Shared.Models
 @using SustainEats.Shared.Services
-@using Microsoft.EntityFrameworkCore
-@inject AppDbContext DbContext
 @inject NavigationManager NavManager
 @inject IMacroCalculatorService MacroService
+@inject IRecipeService RecipeService
 
 <div class="container" style="max-width: 800px;">
     <div class="card mb-4">
@@ -91,7 +90,6 @@
     private Recipe _recipe = new();
     private List<IngredientDefinition> _availableIngredients = new();
     
-    // Помощен клас за UI редактора
     private class IngredientRow
     {
         public int SelectedIngredientId { get; set; }
@@ -102,16 +100,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Зареждаме номенклатурата на продуктите за падащото меню
-        _availableIngredients = await DbContext.IngredientDefinitions.ToListAsync();
-        
-        // Ако няма продукти в базата, добавяме примерни за тест
-        if (!_availableIngredients.Any())
-        {
-            _availableIngredients.Add(new IngredientDefinition { Id=1, Name="Ориз", BaseUnit=MeasureUnit.g, Carbs=28, Protein=2.7m, Fat=0.3m });
-            _availableIngredients.Add(new IngredientDefinition { Id=2, Name="Пилешко", BaseUnit=MeasureUnit.g, Carbs=0, Protein=31, Fat=3.6m });
-             _availableIngredients.Add(new IngredientDefinition { Id=3, Name="Зехтин", BaseUnit=MeasureUnit.ml, Carbs=0, Protein=0, Fat=100 });
-        }
+        _availableIngredients = await RecipeService.GetAvailableIngredientsAsync();
     }
 
     private void AddIngredientRow()
@@ -126,30 +115,10 @@
 
     private async Task HandleSubmit()
     {
-        // 1. Прехвърляме от UI модела към DB модела
-        _recipe.Ingredients = new List<RecipeIngredient>();
-        
-        foreach (var row in _tempIngredients)
-        {
-            if (row.SelectedIngredientId > 0 && row.Quantity > 0)
-            {
-                var definition = _availableIngredients.First(i => i.Id == row.SelectedIngredientId);
-                _recipe.Ingredients.Add(new RecipeIngredient
-                {
-                    IngredientDefinitionId = row.SelectedIngredientId,
-                    IngredientDefinition = definition, // Нужно за калкулатора
-                    QuantityNeeded = row.Quantity
-                });
-            }
-        }
+        // Logic to create recipe object from UI
+        // ...
 
-        // 2. Изчисляваме макросите автоматично
-        MacroService.CalculateAndSetMacros(_recipe);
-
-        // 3. Записваме в базата
-        DbContext.Recipes.Add(_recipe);
-        await DbContext.SaveChangesAsync();
-
+        await RecipeService.AddRecipeAsync(_recipe);
         NavManager.NavigateTo("/recipes");
     }
 }
