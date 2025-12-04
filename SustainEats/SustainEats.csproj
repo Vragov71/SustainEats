@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Maui">
+<Project Sdk="Microsoft.NET.Sdk.Maui">
 
     <PropertyGroup>
-        <TargetFrameworks>net9.0-android34.0;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+        <TargetFrameworks>net9.0-android35.0;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
         <OutputType>Exe</OutputType>
         <RootNamespace>SustainEats</RootNamespace>
         <UseMaui>true</UseMaui>
@@ -26,8 +26,8 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0-preview.3.24172.4" />
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0-preview.3.24172.4" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     </ItemGroup>
 
     <ItemGroup>
